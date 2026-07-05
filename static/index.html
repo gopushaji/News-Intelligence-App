@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>News Intelligence</title>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+
+<!-- ── Screen: Morning Brief ─────────────────────────────────────────────── -->
+<div id="screen-brief" class="screen">
+  <header class="header">
+    <div class="header-top">
+      <span class="app-name">Morning Brief</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="loadTriage()">↻ Refresh</button>
+    </div>
+    <div class="date-line" id="dateDisplay">—</div>
+    <div class="stats-line" id="statsDisplay"></div>
+  </header>
+  <main class="content" id="briefContent">
+    <div class="loading">
+      <div class="spinner"></div>
+      <div class="loading-label">Fetching today's brief…</div>
+      <div class="loading-sub">Classifying headlines across your domains</div>
+    </div>
+  </main>
+</div>
+
+<!-- ── Screen: Knowledge Base ────────────────────────────────────────────── -->
+<div id="screen-knowledge" class="screen" hidden>
+  <header class="header">
+    <div class="header-top">
+      <span class="app-name">Knowledge Base</span>
+    </div>
+    <div class="search-row">
+      <input class="search-input" id="knowledgeSearch" type="search"
+             placeholder="Search your notes…" oninput="debounceKSearch(this.value)"/>
+    </div>
+  </header>
+  <main class="content" id="knowledgeContent">
+    <div class="loading"><div class="spinner"></div><div class="loading-label">Loading notes…</div></div>
+  </main>
+</div>
+
+<!-- ── Screen: Weekly Review ─────────────────────────────────────────────── -->
+<div id="screen-review" class="screen" hidden>
+  <header class="header">
+    <div class="header-top">
+      <span class="app-name">Weekly Review</span>
+    </div>
+  </header>
+  <main class="content" id="reviewContent">
+    <div class="review-cta">
+      <div class="review-icon">📊</div>
+      <div class="review-desc">Analyse your past 7 days of reading — recurring themes, emerging patterns, knowledge gaps, and what to revisit.</div>
+      <button class="generate-btn" onclick="generateReview()">Generate Week's Review →</button>
+    </div>
+  </main>
+</div>
+
+<!-- ── Screen: Reading Mode (full-screen overlay) ────────────────────────── -->
+<div id="screen-reading" class="screen-reading" hidden>
+  <div class="reading-bar">
+    <button class="back-btn" onclick="closeReadingMode()">← Back</button>
+    <span class="reading-article-title" id="readingTitle">Loading…</span>
+  </div>
+
+  <div id="readingLoading" class="reading-loading">
+    <div class="spinner"></div>
+    <div class="loading-label">Analysing article…</div>
+    <div class="loading-sub">Running 3-pass deep read</div>
+  </div>
+
+  <div id="readingContent" hidden>
+    <div class="tab-bar">
+      <button class="tab-btn" id="tab-0" onclick="switchTab(0)" disabled>📋 Facts</button>
+      <button class="tab-btn" id="tab-1" onclick="switchTab(1)" disabled>🔍 Context</button>
+      <button class="tab-btn" id="tab-2" onclick="switchTab(2)" disabled>🔮 Implications</button>
+    </div>
+    <div class="tab-content" id="tabContent"></div>
+    <div class="reading-footer">
+      <button class="next-pass-btn" id="nextPassBtn" onclick="nextPass()">Next Pass →</button>
+    </div>
+    <div id="inferenceSection" class="inference-section" hidden>
+      <div class="inference-label">Your inference</div>
+      <div class="inference-hint">In one sentence — your analytical conclusion from this story.</div>
+      <textarea class="inference-input" id="inferenceInput" rows="3"
+                placeholder="e.g. The Hormuz withdrawal signals India is confident the ceasefire will hold…"></textarea>
+      <button class="save-note-btn" id="saveNoteBtn" onclick="saveToKnowledgeBase()">
+        Save to Knowledge Base
+      </button>
+      <div class="save-status" id="saveStatus"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Bottom Navigation ──────────────────────────────────────────────────── -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-screen="brief" onclick="showScreen('brief')">
+    <span class="nav-icon">📰</span>
+    <span class="nav-label">Brief</span>
+  </button>
+  <button class="nav-btn" data-screen="knowledge" onclick="showScreen('knowledge')">
+    <span class="nav-icon">🧠</span>
+    <span class="nav-label">Knowledge</span>
+  </button>
+  <button class="nav-btn" data-screen="review" onclick="showScreen('review')">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">Review</span>
+  </button>
+</nav>
+
+<script src="/app.js"></script>
+</body>
+</html>
