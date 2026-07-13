@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#0e1014"/>
   <title>News Intelligence</title>
   <link rel="stylesheet" href="/style.css"/>
 </head>
@@ -11,31 +12,29 @@
 <!-- ── Screen: Morning Brief ─────────────────────────────────────────────── -->
 <div id="screen-brief" class="screen">
   <header class="header">
-    <div class="header-top">
-      <span class="app-name">Morning Brief</span>
-      <button class="refresh-btn" id="refreshBtn" onclick="loadTriage()">↻ Refresh</button>
+    <div class="header-inner">
+      <div class="header-top">
+        <span class="app-name">Morning Brief</span>
+        <button class="refresh-btn" id="refreshBtn" onclick="loadTriage(true)">↻ Refresh</button>
+      </div>
+      <div class="date-line" id="dateDisplay">—</div>
+      <div class="stats-line" id="statsDisplay"></div>
     </div>
-    <div class="date-line" id="dateDisplay">—</div>
-    <div class="stats-line" id="statsDisplay"></div>
   </header>
-  <main class="content" id="briefContent">
-    <div class="loading">
-      <div class="spinner"></div>
-      <div class="loading-label">Fetching today's brief…</div>
-      <div class="loading-sub">Classifying headlines across your domains</div>
-    </div>
-  </main>
+  <main class="content" id="briefContent"></main>
 </div>
 
 <!-- ── Screen: Knowledge Base ────────────────────────────────────────────── -->
 <div id="screen-knowledge" class="screen" hidden>
   <header class="header">
-    <div class="header-top">
-      <span class="app-name">Knowledge Base</span>
-    </div>
-    <div class="search-row">
-      <input class="search-input" id="knowledgeSearch" type="search"
-             placeholder="Search your notes…" oninput="debounceKSearch(this.value)"/>
+    <div class="header-inner">
+      <div class="header-top">
+        <span class="app-name">Knowledge Base</span>
+      </div>
+      <div class="search-row">
+        <input class="search-input" id="knowledgeSearch" type="search"
+               placeholder="Search your notes…" oninput="debounceKSearch(this.value)"/>
+      </div>
     </div>
   </header>
   <main class="content" id="knowledgeContent">
@@ -46,13 +45,19 @@
 <!-- ── Screen: Weekly Review ─────────────────────────────────────────────── -->
 <div id="screen-review" class="screen" hidden>
   <header class="header">
-    <div class="header-top">
-      <span class="app-name">Weekly Review</span>
+    <div class="header-inner">
+      <div class="header-top">
+        <span class="app-name">Weekly Review</span>
+      </div>
     </div>
   </header>
   <main class="content" id="reviewContent">
     <div class="review-cta">
-      <div class="review-icon">📊</div>
+      <div class="review-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
+        </svg>
+      </div>
       <div class="review-desc">Analyse your past 7 days of reading — recurring themes, emerging patterns, knowledge gaps, and what to revisit.</div>
       <button class="generate-btn" onclick="generateReview()">Generate Week's Review →</button>
     </div>
@@ -74,9 +79,9 @@
 
   <div id="readingContent" hidden>
     <div class="tab-bar">
-      <button class="tab-btn" id="tab-0" onclick="switchTab(0)" disabled>📋 Facts</button>
-      <button class="tab-btn" id="tab-1" onclick="switchTab(1)" disabled>🔍 Context</button>
-      <button class="tab-btn" id="tab-2" onclick="switchTab(2)" disabled>🔮 Implications</button>
+      <button class="tab-btn" id="tab-0" onclick="switchTab(0)" disabled>Facts</button>
+      <button class="tab-btn" id="tab-1" onclick="switchTab(1)" disabled>Context</button>
+      <button class="tab-btn" id="tab-2" onclick="switchTab(2)" disabled>Implications</button>
     </div>
     <div class="tab-content" id="tabContent"></div>
     <div class="reading-footer">
@@ -98,15 +103,29 @@
 <!-- ── Bottom Navigation ──────────────────────────────────────────────────── -->
 <nav class="bottom-nav">
   <button class="nav-btn active" data-screen="brief" onclick="showScreen('brief')">
-    <span class="nav-icon">📰</span>
+    <span class="nav-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+        <path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>
+      </svg>
+    </span>
     <span class="nav-label">Brief</span>
   </button>
   <button class="nav-btn" data-screen="knowledge" onclick="showScreen('knowledge')">
-    <span class="nav-icon">🧠</span>
+    <span class="nav-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+      </svg>
+    </span>
     <span class="nav-label">Knowledge</span>
   </button>
   <button class="nav-btn" data-screen="review" onclick="showScreen('review')">
-    <span class="nav-icon">📊</span>
+    <span class="nav-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
+      </svg>
+    </span>
     <span class="nav-label">Review</span>
   </button>
 </nav>

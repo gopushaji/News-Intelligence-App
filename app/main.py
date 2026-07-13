@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import newspaper
 from . import knowledge as kb
+from . import cache
 
 load_dotenv()
 
@@ -39,6 +40,9 @@ client = AzureOpenAI(
     api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-01"),
 )
 DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
+
+# How long a triage result stays fresh before a reload re-fetches the feeds
+TRIAGE_TTL_SECONDS = int(os.environ.get("TRIAGE_TTL_MINUTES", "30")) * 60
 
 
 # ── RSS ────────────────────────────────────────────────────────────────────────
@@ -190,6 +194,8 @@ class TriageResponse(BaseModel):
     signal:  list[dict]
     noise:   list[dict]
     archive: list[dict]
+    fetched_at: str = ""
+    cached: bool = False
 
 class DeepReadRequest(BaseModel):
     url: str
@@ -200,6 +206,7 @@ class DeepReadResponse(BaseModel):
     facts: list[str]
     context: list[str]
     implications: list[str]
+    cached: bool = False
 
 class SaveNoteRequest(BaseModel):
     title: str
@@ -218,19 +225,27 @@ def health():
 
 
 @app.get("/api/triage", response_model=TriageResponse)
-def get_triage():
+def get_triage(refresh: bool = Query(False)):
+    cache_key = f"triage:{datetime.now().strftime('%Y-%m-%d')}"
+    if not refresh:
+        cached = cache.get(cache_key, max_age_seconds=TRIAGE_TTL_SECONDS)
+        if cached:
+            return TriageResponse(**{**cached, "cached": True})
     try:
         headlines = fetch_headlines()
         if not headlines:
             raise HTTPException(503, "Could not fetch RSS feeds.")
         enriched = classify_headlines(headlines)
-        return TriageResponse(
-            date=datetime.now().strftime("%A, %d %B %Y"),
-            total=len(enriched),
-            signal  =[h for h in enriched if h["classification"] == "Signal"],
-            noise   =[h for h in enriched if h["classification"] == "Noise"],
-            archive =[h for h in enriched if h["classification"] == "Archive"],
-        )
+        result = {
+            "date": datetime.now().strftime("%A, %d %B %Y"),
+            "total": len(enriched),
+            "signal":  [h for h in enriched if h["classification"] == "Signal"],
+            "noise":   [h for h in enriched if h["classification"] == "Noise"],
+            "archive": [h for h in enriched if h["classification"] == "Archive"],
+            "fetched_at": datetime.now().strftime("%H:%M"),
+        }
+        cache.set(cache_key, result)
+        return TriageResponse(**result)
     except HTTPException:
         raise
     except Exception as e:
@@ -240,6 +255,10 @@ def get_triage():
 
 @app.post("/api/read", response_model=DeepReadResponse)
 def deep_read(req: DeepReadRequest):
+    cache_key = f"read:{req.url}"
+    cached = cache.get(cache_key)
+    if cached:
+        return DeepReadResponse(**{**cached, "cached": True})
     try:
         article = newspaper.Article(req.url)
         article.download()
@@ -255,12 +274,14 @@ def deep_read(req: DeepReadRequest):
             {"role": "system", "content": "You are a deep reading assistant. Always respond with valid JSON only."},
             {"role": "user",   "content": DEEP_READ_PROMPT.format(title=title, text=text)},
         ])
-        return DeepReadResponse(
-            title=title, url=req.url,
-            facts=result.get("facts", []),
-            context=result.get("context", []),
-            implications=result.get("implications", []),
-        )
+        analysis = {
+            "title": title, "url": req.url,
+            "facts": result.get("facts", []),
+            "context": result.get("context", []),
+            "implications": result.get("implications", []),
+        }
+        cache.set(cache_key, analysis)
+        return DeepReadResponse(**analysis)
     except HTTPException:
         raise
     except Exception as e:

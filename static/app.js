@@ -19,9 +19,9 @@ const reading = {
 };
 
 const PASSES = [
-  { key: 'facts',       label: 'Facts',       icon: '📋', sub: 'what happened' },
-  { key: 'context',     label: 'Context',     icon: '🔍', sub: 'why it matters' },
-  { key: 'implications',label: 'Implications',icon: '🔮', sub: 'what to watch' },
+  { key: 'facts',       label: 'Facts',       sub: 'what happened' },
+  { key: 'context',     label: 'Context',     sub: 'why it matters' },
+  { key: 'implications',label: 'Implications',sub: 'what to watch' },
 ];
 
 // ── Screen Navigation ─────────────────────────────────────────────────────────
@@ -37,16 +37,16 @@ function showScreen(name) {
 }
 
 // ── Morning Brief ─────────────────────────────────────────────────────────────
-async function loadTriage() {
+async function loadTriage(force = false) {
   const btn = document.getElementById('refreshBtn');
   btn.disabled = true;
   btn.textContent = 'Loading…';
-  document.getElementById('briefContent').innerHTML = loadingHTML('Fetching today\'s brief…', 'Classifying headlines across your domains');
+  document.getElementById('briefContent').innerHTML = skeletonHTML();
   document.getElementById('dateDisplay').textContent = '—';
   document.getElementById('statsDisplay').textContent = '';
 
   try {
-    const res = await fetch(`${API_BASE}/api/triage`);
+    const res = await fetch(`${API_BASE}/api/triage${force ? '?refresh=1' : ''}`);
     if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Server error'); }
     renderBrief(await res.json());
   } catch (e) {
@@ -61,10 +61,11 @@ async function loadTriage() {
 function renderBrief(data) {
   document.getElementById('dateDisplay').textContent = data.date;
   document.getElementById('statsDisplay').innerHTML =
-    `${data.total} headlines &nbsp;·&nbsp; ` +
-    `<span class="s">▲ ${data.signal.length} Signal</span> &nbsp;·&nbsp; ` +
-    `${data.noise.length} Noise &nbsp;·&nbsp; ` +
-    `<span class="a">◆ ${data.archive.length} Archive</span>`;
+    `<span class="stat-chip chip-total">${data.total} headlines</span>` +
+    `<span class="stat-chip chip-signal">${data.signal.length} Signal</span>` +
+    `<span class="stat-chip chip-noise">${data.noise.length} Noise</span>` +
+    `<span class="stat-chip chip-archive">${data.archive.length} Archive</span>` +
+    (data.fetched_at ? `<span class="stat-chip chip-total" title="Hit ↻ Refresh to fetch fresh headlines">${data.cached ? '⚡ ' : ''}Updated ${data.fetched_at}</span>` : '');
 
   document.getElementById('briefContent').innerHTML =
     renderSection('Signal',  data.signal,  'signal') +
@@ -97,15 +98,16 @@ function renderCard(h, type, id, i = 0) {
   const isSignal = type === 'signal';
   const onclick = isSignal ? `openReadingMode('${id}')` : `toggleCard('${id}')`;
   const delay = Math.min(i * 0.04, 0.3);
+  const label = type.charAt(0).toUpperCase() + type.slice(1);
   return `
     <div class="card ${type}-card" id="card-${id}" style="animation-delay:${delay}s" onclick="${onclick}">
       <div class="card-main">
-        <div class="card-dot ${type}-dot"></div>
-        <div class="card-body">
-          <div class="card-meta"><span class="card-section-tag">${h.section}</span></div>
-          <div class="card-title">${escHtml(h.title)}</div>
-          <div class="card-reason">${escHtml(h.reason)}</div>
+        <div class="card-meta">
+          <span class="badge badge-${type}">${label}</span>
+          <span class="card-section-tag">${h.section}</span>
         </div>
+        <div class="card-title">${escHtml(h.title)}</div>
+        <div class="card-reason">${escHtml(h.reason)}</div>
       </div>
       <div id="expanded-${id}"></div>
     </div>`;
@@ -211,19 +213,7 @@ function unlockAndShow(idx) {
   });
 
   // Render content
-  const pass = PASSES[idx];
-  const items = reading.deepRead[pass.key] || [];
-  document.getElementById('tabContent').innerHTML = `
-    <div class="pass-header-info">
-      <span class="pass-icon-big">${pass.icon}</span>
-      <div>
-        <div class="pass-name">${pass.label}</div>
-        <div class="pass-sub">${pass.sub}</div>
-      </div>
-    </div>
-    <ul class="pass-list">
-      ${items.map(item => `<li>${escHtml(item)}</li>`).join('')}
-    </ul>`;
+  document.getElementById('tabContent').innerHTML = renderPassContent(idx);
 
   // Footer logic
   const nextBtn = document.getElementById('nextPassBtn');
@@ -241,6 +231,22 @@ function unlockAndShow(idx) {
   }
 }
 
+function renderPassContent(idx) {
+  const pass = PASSES[idx];
+  const items = reading.deepRead[pass.key] || [];
+  return `
+    <div class="pass-header-info">
+      <span class="pass-step">${idx + 1}</span>
+      <div>
+        <div class="pass-name">${pass.label}</div>
+        <div class="pass-sub">${pass.sub}</div>
+      </div>
+    </div>
+    <ul class="pass-list">
+      ${items.map(item => `<li>${escHtml(item)}</li>`).join('')}
+    </ul>`;
+}
+
 function nextPass() {
   if (reading.displayPass < 2) unlockAndShow(reading.displayPass + 1);
 }
@@ -254,19 +260,7 @@ function switchTab(idx) {
     t.classList.toggle('active', i === idx);
   });
 
-  const pass = PASSES[idx];
-  const items = reading.deepRead[pass.key] || [];
-  document.getElementById('tabContent').innerHTML = `
-    <div class="pass-header-info">
-      <span class="pass-icon-big">${pass.icon}</span>
-      <div>
-        <div class="pass-name">${pass.label}</div>
-        <div class="pass-sub">${pass.sub}</div>
-      </div>
-    </div>
-    <ul class="pass-list">
-      ${items.map(item => `<li>${escHtml(item)}</li>`).join('')}
-    </ul>`;
+  document.getElementById('tabContent').innerHTML = renderPassContent(idx);
 
   // Show/hide footer based on whether this is the last pass
   document.querySelector('.reading-footer').hidden = reading.maxPass >= 2;
@@ -390,11 +384,11 @@ function renderNoteExpanded(n) {
   const list = items => items.map(i => `<li>${escHtml(i)}</li>`).join('');
   return `
     <div class="note-card-expanded">
-      <div class="note-pass-title">📋 Facts</div>
+      <div class="note-pass-title">Facts</div>
       <ul class="note-pass-list">${list(n.facts)}</ul>
-      <div class="note-pass-title">🔍 Context</div>
+      <div class="note-pass-title">Context</div>
       <ul class="note-pass-list">${list(n.context)}</ul>
-      <div class="note-pass-title">🔮 Implications</div>
+      <div class="note-pass-title">Implications</div>
       <ul class="note-pass-list">${list(n.implications)}</ul>
       <a class="note-read-link" href="${n.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Read original article →</a>
     </div>`;
@@ -505,6 +499,21 @@ function escHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function skeletonHTML(count = 5) {
+  const card = `
+    <div class="skeleton-card">
+      <div class="sk-line sk-badge"></div>
+      <div class="sk-line sk-title"></div>
+      <div class="sk-line sk-title-2"></div>
+      <div class="sk-line sk-text"></div>
+    </div>`;
+  return `
+    <div class="section">
+      <div class="section-header"><span class="sk-line sk-badge" style="margin:0;width:70px"></span></div>
+      ${card.repeat(count)}
+    </div>`;
 }
 
 function loadingHTML(label, sub) {
